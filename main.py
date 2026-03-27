@@ -10,30 +10,27 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 logging.getLogger("lightgbm").setLevel(logging.WARNING)
 
-parser = argparse.ArgumentParser()
 
-parser.add_argument("--gpu_id", type=int, default=4)
-parser.add_argument("--openml_id", type=int, default=4538)
-parser.add_argument("--shot", type=int, default=1)
-parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--force_train", action="store_true")
+def main(args):   
+    configs = load_config(args.config_filename, shot=args.shot)
+    modelname = configs["modelname"]
+    savepath = f'results/seed={args.seed}/shot={args.shot}/model={modelname}/data={args.openml_id}/'
 
-parser.add_argument("--config_filename", type=str, default="sslbinning.yaml")
+    if not os.path.exists(savepath):
+        os.makedirs(savepath)
+        train = True
+    elif not args.force_train:
+        print(f"Folder {savepath} exists. Skipping...")
+        train = False
+        return
+    else:
+        print(f"Folder {savepath} already exists. Replacing content...")
+        train = True
 
-args = parser.parse_args()
-
-configs = load_config(args.config_filename, shot=args.shot)
-modelname = configs["modelname"]
-savepath = f'results/seed={args.seed}/shot={args.shot}/model={modelname}/data={args.openml_id}/'
-
-if not os.path.exists(savepath):
-    os.makedirs(savepath)
-with open(f'{savepath}/config.yaml', 'w') as f:
-    yaml.dump(configs, f)
-
-def main():   
+    with open(f'{savepath}/config.yaml', 'w') as f:
+        yaml.dump(configs, f)
     
-    train = check_trained(savepath)
+    
     if train:
         log = logging.getLogger()
         log.setLevel(logging.INFO)
@@ -75,8 +72,10 @@ def main():
             if modelname != "catboost":
                 configs["params"]["cat_features"] = dataset.X_cat
             configs["params"]["dim"] = 32 if X_train.size(1) < 20 else 8 ## reference: SAINT (Appendix C and dataset stats)
-        except TypeError:
-            pass
+        except TypeError as te:
+            print(f"TypeError in applying dataset info to config: {te}")
+        except Exception as e:
+            print(f"Error in applying dataset info to config: {e}")
         
         kwargs = dict({
             "tasktype": tasktype,
@@ -98,21 +97,32 @@ def main():
             raise ValueError(f'check the model name ({modelname})')
         
         print("Start fitting")
-        st = time.time()
+        fit_start_time = time.time()
         model.fit(X_train, y_train)
+        fit_time = time.time() - fit_start_time # Time to fit model
         if modelname in ["stunt"]:
             train_preds, test_preds, train_prob, test_prob = None, None, None, None
         else:
             try:
+                train_preds = model.predict(X_train)
+                train_prob = model.predict_proba(X_train)
+
+                pred_start_time = time.time()
                 test_preds = model.predict(X_test)
+                pred_time = time.time() - pred_start_time   # Time to predict test set
                 test_prob = model.predict_proba(X_test)
-            except torch.OutOfMemoryError:
+            except torch.OutOfMemoryError as ome:
+                print(f"OutOfMemory error during test prediction: {ome}")
+                pred_start_time = time.time()
                 test_preds = []; test_prob = []
                 for j in range(X_test.shape[0] // 100 + 1):
                     test_preds.append(model.predict(X_test[j*100:(j+1)*100]))
                     test_prob.append(model.predict_proba(X_test[j*100:(j+1)*100]))
                 test_preds = np.concatenate(test_preds, axis=0)
                 test_prob = np.concatenate(test_prob, axis=0)
+                pred_time = (time.time() - pred_start_time) / 2.0  # Time to predict test set
+            except Exception as e:
+                print("An error occurred:", e) 
         
         if modelname.startswith("ssl"):
             train_score = dict(); test_score = dict()
@@ -133,9 +143,20 @@ def main():
         
         saveresults(
             modelname, savepath, train_preds, test_preds, train_prob,
-            test_prob, tasktype, train_score, test_score)
+            test_prob, tasktype, train_score, test_score, fit_time, pred_time)
         print(test_score)
 
 if __name__ == "__main__":   
-    main()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--gpu_id", type=int, default=4)
+    parser.add_argument("--openml_id", type=int, default=4538)
+    parser.add_argument("--shot", type=int, default=1)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--force_train", action="store_true")
+
+    parser.add_argument("--config_filename", type=str, default="sslbinning.yaml")
+
+    args = parser.parse_args()
+    main(args)
     print("==================================================================")

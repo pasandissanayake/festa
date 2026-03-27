@@ -1,8 +1,8 @@
 from libs.transform import *
 from libs.models.tree import simple_baseline
 from libs.models.mlp import MLP
-from libs.models.t2gformer import T2GFormer
-from libs.models.fttransformer import FTTransformer
+# from libs.models.t2gformer import T2GFormer
+# from libs.models.fttransformer import FTTransformer
 from libs.models.ae import ae
 from libs.models.ict import ICT
 from libs.models.meanteacher import meanteacher

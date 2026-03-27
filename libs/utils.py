@@ -133,7 +133,17 @@ def CosineAnnealingParam(warmup_epochs, T_max, iter_per_epoch, current_iter, bas
     else:
         return eta_min + (base_value - eta_min) * (1 + np.cos(np.pi * (current_iter - warmup_iter) / cosine_iter)) / 2
 
-def saveresults(modelname, savepath, train_preds, test_preds, train_prob, test_prob, tasktype, train_score, test_score):
+def saveresults(modelname, 
+                savepath, 
+                train_preds, 
+                test_preds, 
+                train_prob, 
+                test_prob, 
+                tasktype, 
+                train_score, 
+                test_score,
+                train_time=None,
+                test_time=None):
     if modelname.startswith("ssl"):
         with open(os.path.join(savepath, "train_preds.npy"), "wb") as f:
             pickle.dump(train_preds, f)
@@ -153,10 +163,18 @@ def saveresults(modelname, savepath, train_preds, test_preds, train_prob, test_p
         if tasktype in ['binclass', 'multiclass']:
             np.save(os.path.join(savepath, "train_probs.npy"), train_prob)
             np.save(os.path.join(savepath, "test_probs.npy"), test_prob)
-    np.save(os.path.join(savepath, "performance.npy"), dict({"Train": train_score, "Test": test_score}))
+
+    results_dict = dict({
+        "Train": train_score, 
+        "Test": test_score,
+        "Average train time": train_time / len(train_preds),
+        "Average test time": test_time / len(test_preds)
+    })
+    np.save(os.path.join(savepath, "performance.npy"), results_dict)
     
 def load_config(config_filename, shot=None):
-    with open(f'/home/SemiTab/configs/{config_filename}', 'r') as f:
+    print(f"Attempting to open config file {config_filename}...")
+    with open(f'{config_filename}', 'r') as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
     modelname = configs["modelname"]
     if modelname == "knn":
