@@ -32,6 +32,8 @@ class build_mlp(torch.nn.Module):
             act_fn = torch.nn.GELU()
         elif activation == "leakyrelu":
             act_fn = torch.nn.LeakyReLU()
+        elif activation == "elu":
+            act_fn = torch.nn.ELU()
         
         model = [torch.nn.Linear(input_dim, width), act_fn]
         for _ in range(depth-1):
@@ -60,8 +62,26 @@ class MLP(supmodel):
         
         super().__init__(params, tasktype, device, data_id, modelname)
         self.tasktype = tasktype
-        self.model = build_mlp(tasktype, input_dim, output_dim, params['depth'], params['width'], params['dropout'], params['normalization'], params['activation'],
-                               params['optimizer'], params['learning_rate'], params['weight_decay'])
+        # self.model = build_mlp(tasktype, input_dim, output_dim, params['depth'], params['width'], params['dropout'], params['normalization'], params['activation'],
+        #                        params['optimizer'], params['learning_rate'], params['weight_decay'])
+
+        self.model_class = build_mlp
+
+        self.model_init_params = {
+            "tasktype": tasktype,
+            "input_dim": input_dim,
+            "output_dim": output_dim,
+            "depth": params["depth"],
+            "width": params["width"],
+            "dropout": params["dropout"],
+            "normalization": params["normalization"],
+            "activation": params["activation"],
+            "optimizer": params["optimizer"],
+            "learning_rate": params["learning_rate"],
+            "weight_decay": params["weight_decay"],
+        }
+
+        self.model = self.model_class(**self.model_init_params)
         self.model = self.model.to(device)
     
     def fit(self, X_train, y_train):

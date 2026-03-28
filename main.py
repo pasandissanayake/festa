@@ -14,7 +14,8 @@ logging.getLogger("lightgbm").setLevel(logging.WARNING)
 def main(args):   
     configs = load_config(args.config_filename, shot=args.shot)
     modelname = configs["modelname"]
-    savepath = f'results/seed={args.seed}/shot={args.shot}/model={modelname}/data={args.openml_id}/'
+    # savepath = f'results/seed={args.seed}/shot={args.shot}/model={modelname}/data={args.openml_id}/'
+    savepath = f'results/trial={args.trial_id}/seed={args.seed}/shot={args.shot}/model={modelname}/data={args.openml_id}/'
 
     if not os.path.exists(savepath):
         os.makedirs(savepath)
@@ -53,7 +54,7 @@ def main(args):
                                  seed=args.seed, modelname=configs['modelname'])
         (X_train, y_train), (X_test, y_test) = dataset._indv_dataset()
         labeled_idx = torch.where(~y_train.isnan())[0].cpu().numpy()
-        print(f'Full train data size: {X_train.size(0)} {y_train.size()}')
+        print(f'Full train data shape -- X_train: {X_train.size} y_train: {y_train.size}')
         
         try:
             configs["params"]["input_dim"] = X_train.size(1)
@@ -144,7 +145,8 @@ def main(args):
         saveresults(
             modelname, savepath, train_preds, test_preds, train_prob,
             test_prob, tasktype, train_score, test_score, fit_time, pred_time)
-        print(test_score)
+        print("test score:", test_score)
+        return test_score
 
 if __name__ == "__main__":   
     parser = argparse.ArgumentParser()
@@ -153,6 +155,7 @@ if __name__ == "__main__":
     parser.add_argument("--openml_id", type=int, default=4538)
     parser.add_argument("--shot", type=int, default=1)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--trial_id", type=int, default=0)
     parser.add_argument("--force_train", action="store_true")
 
     parser.add_argument("--config_filename", type=str, default="sslbinning.yaml")

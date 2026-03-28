@@ -69,12 +69,12 @@ def evaluate(prediction, target, prediction_proba=None, tasktype="binclass", y_s
                 logloss = np.nan
         else:
             auc, logloss = None, None
-        return acc, auc, logloss
+        return {"accuracy": acc, "auc": auc, "logloss": logloss}
     else:
         assert tasktype == 'regression'
         rmse = mean_squared_error(target * y_std, prediction * y_std) ** 0.5
         r2 = r2_score(target * y_std, prediction * y_std)
-        return rmse, r2
+        return {"rmse": rmse, "r2": r2}
 
 class TqdmLoggingHandler(logging.StreamHandler):
     """Avoid tqdm progress bar interruption by logger's output to console"""
