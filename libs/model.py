@@ -15,6 +15,7 @@ from libs.models.tabpfn import tabpfn
 from libs.models.pseudolabel import pseudolabel
 from libs.models.saint import main_saint
 from libs.models.hyperfast import hyperfast
+from libs.models.tabdistill import TabDistill
 
 def get_model(modelname, kwargs):
     
@@ -74,7 +75,8 @@ def get_model(modelname, kwargs):
             kwargs["params"], kwargs["tasktype"], kwargs["device"], ToTensor(), BinSampling(0.3, 4, kwargs["num_features"]), 
             unsup_weight=1., data_id=kwargs["data_id"], modelname="mlp", cat_features=kwargs["cat_features"]),
         "sslsaint": lambda params: main_saint(
-            kwargs["params"], kwargs["tasktype"], kwargs["device"], data_id=kwargs["data_id"], modelname="mlp", cat_features=kwargs["cat_features"])
+            kwargs["params"], kwargs["tasktype"], kwargs["device"], data_id=kwargs["data_id"], modelname="mlp", cat_features=kwargs["cat_features"]),
+        "tabdistill": lambda params: TabDistill(kwargs["params"], kwargs["tasktype"], kwargs["input_dim"], kwargs["output_dim"], kwargs["device"], kwargs["data_id"], "tabdistill"),
     }
     
     return model_zoo[modelname](kwargs)

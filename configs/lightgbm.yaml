@@ -10,7 +10,7 @@ params:
     subsample: 1.0
 
     hpo: true
-    hpo_trials: 2
+    hpo_trials: 100
     cv_folds: 4
     hpo_config:
         num_leaves:

@@ -12,7 +12,7 @@ params:
     n_epochs: 100
 
     hpo: true
-    hpo_trials: 2
+    hpo_trials: 100
     cv_folds: 4
     hpo_config: 
         depth: {type: categorical, values: [1, 2, 3]}

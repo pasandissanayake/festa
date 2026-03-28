@@ -8,7 +8,7 @@ params:
     iterations: 1000
 
     hpo: true
-    hpo_trials: 3
+    hpo_trials: 100
     cv_folds: 4
     hpo_config:
         learning_rate:

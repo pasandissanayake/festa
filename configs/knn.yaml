@@ -3,7 +3,7 @@ params:
   k: 10
 
   hpo: true
-  hpo_trials: 2
+  hpo_trials: 100
   cv_folds: 4
   hpo_config:
     k:

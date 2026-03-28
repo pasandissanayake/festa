@@ -38,6 +38,7 @@ class simple_baseline:
     # Model Initialization
     # -------------------------
     def _init_model(self, params):
+        print(f"params: {params}")
 
         if self.modelname == "xgboost":
             pred_fn = {

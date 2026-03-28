@@ -1,0 +1,18 @@
+modelname: tabdistill
+params: 
+  mlp_width: 128
+  mlp_depth: 2
+  batch_size: 256
+  learning_rate: 2.0e-4
+  weight_decay: 0.0
+  lr_scheduler: false
+  n_epochs: 10
+
+  hpo: true
+  hpo_
+  mlp_depth: 2
+  batch_size: 256
+  learning_rate: 2.0e-4
+  weight_decay: 0.0
+  lr_scheduler: false
+  n_epochs: 10
