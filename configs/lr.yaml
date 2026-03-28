@@ -1,3 +1,17 @@
 modelname: lr
 params:
+  penalty: l2
+  C: 1.0
+  max_iter: 100
+  fit_intercept: true
+
+  hpo: true
+  hpo_trials: 3
+  cv_folds: 4
+  hpo_config:
+    penalty: {type: categorical, values: [l1, l2]}
+    C: {type: loguniform, low: 0.00001, high: 5}
+    max_iter: {type: int, low: 50, high: 500}
+    fit_intercept: {type: categorical, values: [true, false]}
+
     

@@ -1,2 +1,12 @@
 modelname: knn
 params:
+  k: 10
+
+  hpo: true
+  hpo_trials: 2
+  cv_folds: 4
+  hpo_config:
+    k:
+      type: int
+      low: 1
+      high: 16

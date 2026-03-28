@@ -3,6 +3,7 @@ from tqdm import tqdm
 import numpy as np
 import random
 import inspect
+from sklearn.model_selection import KFold
 
 
 # =========================
@@ -219,42 +220,70 @@ class supmodel(torch.nn.Module):
 
         hpo_config = self.params["hpo_config"]
         n_trials = self.params.get("hpo_trials", 20)
-        val_ratio = self.params.get("val_ratio", 0.2)
+        n_splits = self.params.get("cv_folds", 4)
 
-        print(f"Starting HPO with # trials: {n_trials}, val ratio: {val_ratio}\n hpo config: {hpo_config}")
+        print(f"Starting HPO with {n_trials} trials, {n_splits}-fold CV")
+        print(f"HPO config: {hpo_config}")
 
-        X_tr, y_tr, X_val, y_val = train_val_split(X_train, y_train, val_ratio)
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.params.get("seed", 0))
 
         best_score = -float("inf")
         best_params = None
 
         for trial in range(n_trials):
+
             trial_params = sample_hyperparameters(hpo_config)
 
-            original_params = self.params.copy()
-            self.params.update(trial_params)
+            fold_scores = []
 
-            # rebuild model
-            self.model = self._build_model_with_params(trial_params)
+            print(f"\n--- Trial {trial} ---")
+            print(f"Params: {trial_params}")
 
-            # train
-            self._fit_single(X_tr, y_tr)
+            for fold_idx, (train_idx, val_idx) in enumerate(kf.split(X_train)):
 
-            # evaluate
-            preds = self.predict(X_val)
-            score = self._evaluate(preds, y_val)
+                # Split data
+                X_tr = X_train[train_idx]
+                y_tr = y_train[train_idx]
+                X_val = X_train[val_idx]
+                y_val = y_train[val_idx]
 
-            if score > best_score:
-                best_score = score
+                # Backup original params
+                original_params = self.params.copy()
+                self.params.update(trial_params)
+
+                # 🔥 IMPORTANT: rebuild model for each fold
+                self.model = self._build_model_with_params(trial_params)
+
+                # Train
+                self._fit_single(X_tr, y_tr)
+
+                # Evaluate
+                preds = self.predict(X_val)
+                score = self._evaluate(preds, y_val)
+
+                fold_scores.append(score)
+
+                print(f"  Fold {fold_idx}: score={score:.5f}")
+
+                # Restore params
+                self.params = original_params
+
+            # Aggregate across folds
+            mean_score = float(np.mean(fold_scores))
+            std_score = float(np.std(fold_scores))
+
+            print(f"Trial {trial}: mean={mean_score:.5f}, std={std_score:.5f}")
+
+            # Optional: variance-aware selection
+            final_score = mean_score - 0.1 * std_score
+
+            if final_score > best_score:
+                best_score = final_score
                 best_params = trial_params
 
-            self.params = original_params
+        print("\nBest params:", best_params)
 
-            print(f"Trial {trial}: score={score:.5f}, params={trial_params}")
-
-        print("Best params:", best_params)
-
-        # retrain final model
+        # 🔥 Retrain on full dataset
         self.params.update(best_params)
         self.model = self._build_model_with_params(best_params)
         self._fit_single(X_train, y_train)

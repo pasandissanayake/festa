@@ -54,7 +54,7 @@ def main(args):
                                  seed=args.seed, modelname=configs['modelname'])
         (X_train, y_train), (X_test, y_test) = dataset._indv_dataset()
         labeled_idx = torch.where(~y_train.isnan())[0].cpu().numpy()
-        print(f'Full train data shape -- X_train: {X_train.size} y_train: {y_train.size}')
+        print(f'Full train data shape -- X_train: {X_train.shape} y_train: {y_train.shape}')
         
         try:
             configs["params"]["input_dim"] = X_train.size(1)

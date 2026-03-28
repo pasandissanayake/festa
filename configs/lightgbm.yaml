@@ -1,5 +1,54 @@
 modelname: lightgbm
 params:
-    n_estimators: 2000
-    max_depth: 10
-    learning_rate: 0.001
+    num_leaves: 31
+    max_depth: -1
+    learning_rate: 0.1
+    n_estimators: 500
+    min_child_weight: 1e-3
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    subsample: 1.0
+
+    hpo: true
+    hpo_trials: 2
+    cv_folds: 4
+    hpo_config:
+        num_leaves:
+            type: int
+            low: 5
+            high: 50
+
+        max_depth:
+            type: int
+            low: 3
+            high: 20
+
+        learning_rate:
+            type: float
+            low: 1.0e-3
+            high: 1.0
+            log: true
+
+        n_estimators:
+            type: int
+            low: 5
+            high: 2000
+
+        min_child_weight:
+            type: float
+            low: 1.0e-5
+            high: 1.0e+4
+            log: true
+
+        reg_alpha:
+            type: categorical
+            values: [0, 1e-1, 1, 2, 5, 7, 10, 50, 100]
+
+        reg_lambda:
+            type: categorical
+            values: [0, 1e-1, 1, 5, 10, 20, 50, 100]
+
+        subsample:
+            type: float
+            low: 0.2
+            high: 0.8
