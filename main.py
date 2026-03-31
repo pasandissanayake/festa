@@ -61,7 +61,7 @@ def main(args):
             configs["params"]["output_dim"] = y_train.size(1) if tasktype == "multiclass" else 1
             configs["params"]["shots"] = args.shot
             configs["params"]["features_low"] = X_train.min(axis=0).values.cpu().numpy()
-            configs["params"]["features_high"] = X_train.max(axis=0).values.cpu().numpy()   
+            configs["params"]["features_high"] = X_train.max(axis=0).values.cpu().numpy()  
             epsilon = 1e-10
             configs["params"]["features_high"] = np.where(
                 configs["params"]["features_low"] == configs["params"]["features_high"],
@@ -134,8 +134,8 @@ def main(args):
             train_score = model.evaluate(X_train, y_train, X_train, y_train)
             test_score = model.evaluate(X_train, y_train, X_test, y_test)
         elif (modelname in ["tabpfn"]) & (train_preds is not None):
-            train_score = evaluate(train_preds[labeled_idx], y_train[labeled_idx], train_prob[labeled_idx], tasktype=tasktype, y_std=dataset.y_std, tabpfn=True)
-            test_score = evaluate(test_preds, y_test, test_prob, tasktype=tasktype, y_std=dataset.y_std, tabpfn=True)
+            train_score = evaluate(train_preds[labeled_idx], y_train[labeled_idx], train_prob[labeled_idx], tasktype=tasktype, y_std=dataset.y_std, tabpfn=False) # orginally tabpfn=True
+            test_score = evaluate(test_preds, y_test, test_prob, tasktype=tasktype, y_std=dataset.y_std, tabpfn=False) # orginally tabpfn=True
         elif (modelname == "tabpfn"): ## not applicable datasets
             train_score = [0., 0.]; test_score = [0., 0.]
         else:

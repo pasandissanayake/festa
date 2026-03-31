@@ -16,6 +16,7 @@ from libs.models.pseudolabel import pseudolabel
 from libs.models.saint import main_saint
 from libs.models.hyperfast import hyperfast
 from libs.models.tabdistill import TabDistill
+from libs.models.mothernet import mothernet
 
 def get_model(modelname, kwargs):
     
@@ -77,6 +78,7 @@ def get_model(modelname, kwargs):
         "sslsaint": lambda params: main_saint(
             kwargs["params"], kwargs["tasktype"], kwargs["device"], data_id=kwargs["data_id"], modelname="mlp", cat_features=kwargs["cat_features"]),
         "tabdistill": lambda params: TabDistill(kwargs["params"], kwargs["tasktype"], kwargs["input_dim"], kwargs["output_dim"], kwargs["device"], kwargs["data_id"], "tabdistill"),
+        "mothernet": lambda params: mothernet(kwargs["params"], kwargs["tasktype"], kwargs["input_dim"], kwargs["output_dim"], kwargs["device"], kwargs["data_id"], "mothernet"),
     }
     
     return model_zoo[modelname](kwargs)

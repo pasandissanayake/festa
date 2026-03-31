@@ -1,18 +1,17 @@
 import torch
 import numpy as np
-from tabpfn import TabPFNClassifier
-# For tabpfn, you should install tabpfn library as 1.**
-# For tabpfnv2, you should install tabpfn library as 2.**
 
-class tabpfn(torch.nn.Module):
-    def __init__(self, params, tasktype, input_dim=0, output_dim=0, device='cuda', data_id=None, modelname="tabpfn"):
+# MotherNet / TICL imports
+from ticl.prediction import MotherNetClassifier
+
+
+
+class mothernet(torch.nn.Module):
+    def __init__(self, params, tasktype, input_dim=0, output_dim=0, device='cuda', data_id=None, modelname="mothernet"):
         
-        super(tabpfn, self).__init__()
+        super(mothernet, self).__init__()
         self.tasktype = tasktype
-        if modelname == "tabpfn":
-            self.model = TabPFNClassifier(device=device)
-        elif modelname == "tabpfnv2":
-            self.model = TabPFNClassifier(device=device, ignore_pretraining_limits=True)
+        self.model = MotherNetClassifier(device=device)
     
     def fit(self, X_train, y_train):
         labeled_flag = torch.unique(torch.where(~torch.isnan(y_train))[0])

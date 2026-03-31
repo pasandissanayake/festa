@@ -14,7 +14,7 @@ params:
   add_dropout: true
   dropout_p: 0.1
 
-  hpo: false
+  hpo: true
   hpo_trials: 20
   cv_folds: 4
   hpo_config:
