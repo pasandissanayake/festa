@@ -44,6 +44,7 @@ class build_mlp(torch.nn.Module):
         model.append(torch.nn.Linear(width, output_dim))
         
         self.model = torch.nn.Sequential(*model)
+
         
     def forward(self, x, cat_features=[]):
         return self.model(x)

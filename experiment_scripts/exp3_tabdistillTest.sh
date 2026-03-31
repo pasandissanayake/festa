@@ -4,10 +4,12 @@ GPU_ID=0
 LOG_DIR=logs
 mkdir -p "$LOG_DIR"
 
-OPENML_IDS=(4538)
+OPENML_IDS=(37)
+# SHOTS=(2 4 8 16)
 SHOTS=(4)
-SEEDS=(42)
-CONFIGS=("configs/tabdistill.yaml")
+SEEDS=(12)
+# CONFIGS=("configs/tabdistill.yaml")
+CONFIGS=("configs/mlp_nocv.yaml")
 
 
 

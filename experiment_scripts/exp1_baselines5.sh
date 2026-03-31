@@ -7,7 +7,7 @@ mkdir -p "$LOG_DIR"
 OPENML_IDS=(12 16 18 22 23 31 32 37 38 44 54 182  300  307 1049 1053 1063 1068 1462 1464)
 SHOTS=(2 3 4 8 16)
 SEEDS=(42 50 38 90 12)
-CONFIGS=("configs/mlp.yaml")
+CONFIGS=("configs/hyperfast.yaml" "configs/tabpfn.yaml")
 
 
 

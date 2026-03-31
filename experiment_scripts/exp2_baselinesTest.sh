@@ -1,5 +1,4 @@
 #!/bin/bash
-
 GPU_ID=0
 LOG_DIR=logs
 mkdir -p "$LOG_DIR"

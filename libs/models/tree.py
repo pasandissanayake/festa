@@ -162,7 +162,13 @@ class simple_baseline:
     def _run_cv(self, X, y):
 
         if self.tasktype in ["binclass", "multiclass"]:
-            kf = StratifiedKFold(n_splits=self.cv_folds, shuffle=True, random_state=self.seed)
+            unique, counts = np.unique(y, return_counts=True)
+            min_class_count = counts.min()
+
+            # adjust number of splits
+            n_splits = min(self.cv_folds, min_class_count)
+
+            kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=self.seed)
             splits = kf.split(X, y)
         else:
             kf = KFold(n_splits=self.cv_folds, shuffle=True, random_state=self.seed)

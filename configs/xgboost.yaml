@@ -1,7 +1,7 @@
 modelname: xgboost
 params:
     hpo: true
-    hpo_trials: 100
+    hpo_trials: 20
     cv_folds: 4
     hpo_config:
         learning_rate:

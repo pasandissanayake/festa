@@ -33,7 +33,10 @@ def check_softmax(logits):
         return logits
 
 
-def dict_to_mlp(weight_dict: dict[str, torch.Tensor], in_dim:int) -> nn.Sequential:
+def dict_to_mlp(weight_dict: dict[str, torch.Tensor], 
+                in_dim:int,
+                add_dropout:bool=False,
+                p:float=0.0) -> nn.Sequential:
     """
     Convert a dictionary of 'wbX' -> tensor(out_features, in_features+1)
     into a PyTorch MLP with the given weights and biases.
@@ -71,12 +74,15 @@ def dict_to_mlp(weight_dict: dict[str, torch.Tensor], in_dim:int) -> nn.Sequenti
         
         layers.append(layer)
         
-        # Optionally add non-linearity (ReLU here, skip after last)
+        # Add non-linearity (ReLU here, skip after last)
         if i < len(sorted_keys) - 1:
             layers.append(nn.ReLU())
 
+        if i == len(sorted_keys) - 2 and add_dropout:
+            layers.append(nn.Dropout(p=p))
+
         in_dim = out_dim
-    
+
     return nn.Sequential(*layers)
 
 
@@ -138,10 +144,9 @@ class TabDistill():
             
         if y_train.ndim == 1:
             y_train = y_train.unsqueeze(1)
-
+        
         if self.tasktype == "multiclass":
             y_train = y_train.argmax(axis=1)
-
 
         self.model.to(self.device)
         self.model(X_train.to(self.device), y_train.to(self.device))
@@ -154,7 +159,7 @@ class TabDistill():
 
         n_queries = len(X_train)
 
-        print(f"TabPFN regressor input dimension: {self.model.regressor[1].in_features}, total hyponet parameters: {self.model.total_params}, # queries: {n_queries}")
+        print(f"TabPFN regressor input dimension: {self.model.regressor[0].in_features}, total hyponet parameters: {self.model.total_params}, # queries: {n_queries}")
 
         print(f"Device: {self.device}")
 
@@ -197,8 +202,10 @@ class TabDistill():
 
         pbar = tqdm(range(1, self.params.get('n_epochs', 0) + 1))
 
+        # Train regressor
         for epoch in pbar:
             pbar.set_description(f"EPOCH: {epoch}")
+            perm = torch.randperm(X_train.shape[1])  # number of features
 
             for x, y in loader:
                 self.model.train()
@@ -206,6 +213,9 @@ class TabDistill():
 
                 x = x.to(self.device)
                 y = y.to(self.device)
+
+                # # apply column shuffle
+                # x = x[:, perm]
 
                 hyponet = self.model(x, y)
                 out = hyponet(x)
@@ -223,7 +233,49 @@ class TabDistill():
                 )
 
         self.model.eval()
-        self.hyponet = dict_to_mlp(self.model(X_train, y_train).params, self.input_dim)
+        self.hyponet = dict_to_mlp(weight_dict=self.model(X_train, y_train).params, 
+                                   in_dim=self.input_dim,
+                                   add_dropout=self.params.get("add_dropout", False),
+                                   p=self.params.get("dropout_p", 0.0))
+
+
+        # hyponet fine-tuning
+        mlp_optimizer = torch.optim.AdamW(params=self.hyponet.parameters(), lr=self.params["mlp_learning_rate"], weight_decay=self.params["mlp_weight_decay"])
+
+        if self.tasktype == "regression":
+            loss_fn = torch.nn.functional.mse_loss
+        elif self.tasktype == "binclass":
+            loss_fn = torch.nn.functional.binary_cross_entropy_with_logits
+        else:
+            loss_fn = torch.nn.functional.cross_entropy
+
+
+        self.hyponet.to(self.device)
+        self.hyponet.train()
+
+        pbar = tqdm(range(1, self.params.get('mlp_n_epochs', 0) + 1))
+
+        for epoch in pbar:
+            pbar.set_description(f"MLP EPOCH: {epoch}")
+
+            for x, y in loader:
+                self.hyponet.train()
+                mlp_optimizer.zero_grad()
+
+                out = self.hyponet(x.to(self.device))
+
+                loss = loss_fn(out, y.to(self.device))
+                loss.backward()
+
+                mlp_optimizer.step()
+
+                pbar.set_postfix_str(
+                    f"data_id: {self.data_id}, Model: {self.modelname}, Tr loss: {loss:.5f}"
+                )
+
+        self.hyponet.eval()
+
+        print(self.hyponet)
         return self
 
 
@@ -235,6 +287,12 @@ class TabDistill():
 
         print(f"Starting HPO with {n_trials} trials, {n_splits}-fold CV")
         print(f"HPO config: {hpo_config}")
+
+        unique, counts = np.unique(y_train.cpu().numpy(), return_counts=True)
+        min_class_count = counts.min()
+
+        # adjust number of splits
+        n_splits = min(n_splits, min_class_count)
 
         kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.params.get("seed", 0))
 
@@ -410,9 +468,13 @@ class TabDistillClassifier(nn.Module):
         self.total_params = total_params
 
         self.regressor = nn.Sequential(
-            nn.Flatten(),
+            # nn.Flatten(),
+            # nn.LazyLinear(256),
+            # nn.LayerNorm(256),
+            # nn.ReLU(),
             nn.LazyLinear(self.total_params),
             nn.LayerNorm(self.total_params),
+            # nn.ReLU(),
         )
             
     def forward(self, queries_x, queries_y):
@@ -494,9 +556,11 @@ class HypoMlp(nn.Module):
         
         # create parameter shapes dict()
         self.param_shapes = dict()
-        for i in range(self.depth):
-            d1 = self.hidden_dim + 1 if i > 0 else self.in_dim + 1
-            d2 = self.hidden_dim if i < self.depth - 1 else self.out_dim
+
+        self.param_shapes[f'wb{0}'] = (self.in_dim + 1, self.hidden_dim)
+        for i in range(1, self.depth+1):
+            d1 = self.hidden_dim + 1
+            d2 = self.hidden_dim if i < self.depth else self.out_dim
             self.param_shapes[f'wb{i}'] = (d1, d2)
 
         self.relu = nn.ReLU()
@@ -507,7 +571,7 @@ class HypoMlp(nn.Module):
 
     def forward(self, x):
         x = x.unsqueeze(dim=0)
-        for i in range(self.depth):
+        for i in range(self.depth + 1):
             x = batched_linear_mm(x, self.params[f'wb{i}'])
             if i < self.depth - 1:
                 x = self.relu(x)
@@ -522,3 +586,23 @@ def batched_linear_mm(x, wb):
     wb = einops.rearrange(wb, "batch (in_dim out_dim) -> batch in_dim out_dim", in_dim=x.shape[2])
     wb = einops.repeat(wb, "batch in_dim out_dim -> batch n_queries in_dim out_dim", n_queries=x.shape[1])
     return einops.einsum(x, wb, "batch n_queries in_dim, batch n_queries in_dim out_dim -> batch n_queries out_dim")
+
+
+def sample_hyperparameters(hpo_config):
+    sampled = {}
+    for key, spec in hpo_config.items():
+        if spec["type"] == "loguniform":
+            sampled[key] = float(
+                np.exp(np.random.uniform(np.log(spec["low"]), np.log(spec["high"])))
+            )
+        elif spec["type"] == "uniform":
+            sampled[key] = float(np.random.uniform(spec["low"], spec["high"]))
+        elif spec["type"] == "int":
+            sampled[key] = int(np.random.randint(spec["low"], spec["high"] + 1))
+        elif spec["type"] == "categorical":
+            sampled[key] = random.choice(spec["values"])
+    return sampled
+
+
+
+

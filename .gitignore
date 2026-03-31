@@ -1,4 +1,4 @@
-results
-logs
+results*
+logs*
 catboost_info
 *.pyc

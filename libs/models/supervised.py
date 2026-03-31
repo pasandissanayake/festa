@@ -225,6 +225,12 @@ class supmodel(torch.nn.Module):
         print(f"Starting HPO with {n_trials} trials, {n_splits}-fold CV")
         print(f"HPO config: {hpo_config}")
 
+        unique, counts = np.unique(y_train.cpu().numpy(), return_counts=True)
+        min_class_count = counts.min()
+
+        # adjust number of splits
+        n_splits = min(n_splits, min_class_count)
+
         kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.params.get("seed", 0))
 
         best_score = -float("inf")
